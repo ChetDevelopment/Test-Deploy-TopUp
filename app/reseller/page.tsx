@@ -42,7 +42,7 @@ export default function ResellerPage() {
             <CheckCircle2 className="h-16 w-16 text-green-400 mx-auto mb-6" />
             <h1 className="font-display text-3xl font-bold mb-4">Application Submitted!</h1>
             <p className="text-royal-muted">
-              We'll review your application and get back to you within 24-48 hours.
+              We&apos;ll review your application and get back to you within 24-48 hours.
             </p>
           </div>
         </main>

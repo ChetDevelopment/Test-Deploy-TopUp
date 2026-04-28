@@ -49,7 +49,7 @@ export default function SupportPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold">Support</h1>
-            <p className="text-royal-muted">We're here to help</p>
+            <p className="text-royal-muted">We&apos;re here to help</p>
           </div>
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             <Plus className="h-4 w-4 mr-2" /> New Ticket
@@ -99,7 +99,7 @@ export default function SupportPage() {
           <div className="card p-8 mb-8 text-center">
             <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-4" />
             <h3 className="font-bold text-lg mb-2">Ticket Submitted!</h3>
-            <p className="text-royal-muted">We'll respond within 24 hours.</p>
+            <p className="text-royal-muted">We&apos;ll respond within 24 hours.</p>
             <button onClick={() => setSent(false)} className="btn-ghost mt-4">Submit Another</button>
           </div>
         )}
@@ -111,7 +111,7 @@ export default function SupportPage() {
             </div>
           ) : tickets.length === 0 ? (
             <div className="card p-12 text-center text-royal-muted">
-              No tickets yet. We're here to help!
+               No tickets yet. We&apos;re here to help!
             </div>
           ) : (
             tickets.map((ticket: any) => (
