@@ -80,7 +80,7 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     currency: paymentCurrency,
     bill_number: args.orderNumber.substring(0, 25),
     terminal_label: "TyKhai",
-    static: true, // Use static to avoid expiry; amount validated via check_payment API
+    static: false, // Dynamic QR locks the amount - REQUIRED for security
   });
   
   if (!qrResult) {
@@ -116,45 +116,57 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
 
   try {
     console.log("[bakong] check_payment:", md5Hash);
-    const result = await khqr.check_payment(md5Hash);
-    console.log("[bakong] check_payment result:", result, "type:", typeof result);
+    
+    // Use get_payment() instead of check_payment() to get actual amount paid
+    const result = await khqr.get_payment(md5Hash);
+    console.log("[bakong] get_payment result:", JSON.stringify(result));
 
-    // Handle both string response ("PAID") and object response
-    let status: string;
-    let paidAmount: number | undefined;
-    let currency: string | undefined;
-
-    if (typeof result === "string") {
-      status = result;
-    } else if (result && typeof result === "object") {
-      status = (result as any).status || (result as any).transactionStatus || "UNPAID";
-      paidAmount = (result as any).amount ? parseFloat((result as any).amount) : undefined;
-      currency = (result as any).currency;
-    } else {
-      status = "UNPAID";
+    if (!result) {
+      return { status: "UNPAID", paid: false };
     }
 
-    // Only mark as paid if status is PAID AND amount matches (if expectedAmount provided)
-    let isPaid = status === "PAID";
+    // get_payment returns object with: hash, fromAccountId, toAccountId, currency, amount, etc.
+    const paymentResult = result as any;
+    const status = paymentResult.trackingStatus || paymentResult.status || "UNPAID";
+    const paidAmount = paymentResult.amount ? parseFloat(String(paymentResult.amount)) : undefined;
+    const currency = paymentResult.currency;
+
+    // Check if payment exists and is completed
+    const isPaid = status === "PAID" || status === "COMPLETED" || status === "ACKNOWLEDGED";
+    
     if (isPaid && expectedAmount && paidAmount) {
       // Allow small floating point difference (1 cent tolerance)
       const amountMatches = Math.abs(paidAmount - expectedAmount) < 0.01;
       if (!amountMatches) {
         console.warn(`[bakong] Amount mismatch: expected ${expectedAmount}, got ${paidAmount}`);
-        isPaid = false;
-        status = "AMOUNT_MISMATCH";
+        return {
+          status: "AMOUNT_MISMATCH",
+          paid: false,
+          amount: paidAmount,
+          currency,
+        };
       }
     }
 
     return {
-      status: status || "UNPAID",
+      status: isPaid ? "PAID" : status,
       paid: isPaid,
       amount: paidAmount,
       currency,
     };
   } catch (e) {
-    console.warn("[bakong] check_payment failed:", e);
-    return null;
+    console.warn("[bakong] get_payment failed:", e);
+    // Fallback to check_payment if get_payment fails
+    try {
+      const checkResult = await khqr.check_payment(md5Hash);
+      return {
+        status: String(checkResult) || "UNPAID",
+        paid: checkResult === "PAID",
+      };
+    } catch (e2) {
+      console.warn("[bakong] check_payment fallback failed:", e2);
+      return null;
+    }
   }
 }
 
