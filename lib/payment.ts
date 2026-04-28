@@ -156,17 +156,9 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
     };
   } catch (e) {
     console.warn("[bakong] get_payment failed:", e);
-    // Fallback to check_payment if get_payment fails
-    try {
-      const checkResult = await khqr.check_payment(md5Hash);
-      return {
-        status: String(checkResult) || "UNPAID",
-        paid: checkResult === "PAID",
-      };
-    } catch (e2) {
-      console.warn("[bakong] check_payment fallback failed:", e2);
-      return null;
-    }
+    // DO NOT fallback to check_payment - it doesn't return amount info
+    // Without amount validation, we cannot trust the payment
+    return null;
   }
 }
 

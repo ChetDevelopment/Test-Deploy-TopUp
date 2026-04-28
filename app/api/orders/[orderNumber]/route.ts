@@ -29,8 +29,8 @@ export async function GET(
       const remote = await checkBakongPayment(order.paymentRef, order.amountUsd);
        console.log("[order] checkBakongPayment:", order.paymentRef, "→", remote);
 
-       if (remote) {
-         const isPaid = remote?.paid === true || remote?.status === "paid";
+       if (remote && remote.paid) {
+         // Only mark as paid if validation passed (amount matches)
         if (isPaid) {
           order = await prisma.order.update({
             where: { id: order.id },

@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
 
     const result = await checkBakongPayment(md5Hash, order.amountUsd);
     if (!result || !result.paid) {
+      // Log amount mismatch for debugging
+      if (result?.status === "AMOUNT_MISMATCH") {
+        console.warn(`[bakong-webhook] Amount mismatch for order ${order.orderNumber}: expected ${order.amountUsd}, got ${result.amount}`);
+      }
       return NextResponse.json({ status: result?.status || "UNPAID" });
     }
 
