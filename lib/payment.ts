@@ -80,7 +80,7 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     currency: paymentCurrency,
     bill_number: args.orderNumber.substring(0, 25),
     terminal_label: "TyKhai",
-    static: false, // Dynamic QR locks the amount - REQUIRED for security
+    static: true, // Static QR doesn't expire; amount validated via get_payment()
   });
   
   if (!qrResult) {
