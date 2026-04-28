@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
   }
 
+  console.log("Login attempt for:", parsed.data.email);
   const admin = await verifyAdminCredentials(parsed.data.email, parsed.data.password);
+  console.log("verifyAdminCredentials result:", admin ? "success" : "failed");
+  
   if (!admin) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
