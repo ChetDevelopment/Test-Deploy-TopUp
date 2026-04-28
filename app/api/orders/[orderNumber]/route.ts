@@ -27,55 +27,56 @@ export async function GET(
   if (order.status === "PENDING" && order.paymentRef && !order.paymentRef.startsWith("SIM-")) {
     try {
       const remote = await checkBakongPayment(order.paymentRef, order.amountUsd);
-       console.log("[order] checkBakongPayment:", order.paymentRef, "→", remote);
+      console.log("[order] checkBakongPayment:", order.paymentRef, "→", remote);
 
-       if (remote && remote.paid) {
-         // Only mark as paid if validation passed (amount matches)
-        if (isPaid) {
-          order = await prisma.order.update({
-            where: { id: order.id },
-            data: { status: "DELIVERED", paidAt: new Date(), deliveredAt: new Date() },
-            include: {
-              game: { select: { name: true, slug: true } },
-              product: { select: { name: true } },
-            },
-          });
-          if (order.userId) {
-            await updateUserTotalSpent(order.userId, order.amountUsd);
-          }
-          if (order.customerEmail) {
-            await sendOrderReceipt({
-              orderNumber: order.orderNumber,
-              gameName: order.game.name,
-              productName: order.product.name,
-              playerUid: order.playerUid,
-              amountUsd: order.amountUsd,
-              amountKhr: order.amountKhr,
-              currency: order.currency,
-              paidAt: order.paidAt,
-              deliveredAt: order.deliveredAt,
-              status: order.status,
-              customerEmail: order.customerEmail,
-            });
-          }
-        } else if (remote?.status === "expired" || remote?.status === "failed") {
-          order = await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              status: remote.status === "expired" ? "CANCELLED" : "FAILED",
-              failureReason: `Payment ${remote.status}`,
-            },
-            include: {
-              game: { select: { name: true, slug: true } },
-              product: { select: { name: true } },
-            },
+      if (remote && remote.paid) {
+        order = await prisma.order.update({
+          where: { id: order.id },
+          data: { status: "DELIVERED", paidAt: new Date(), deliveredAt: new Date() },
+          include: {
+            game: { select: { name: true, slug: true } },
+            product: { select: { name: true } },
+          },
+        });
+        if (order.userId) {
+          await updateUserTotalSpent(order.userId, order.amountUsd);
+        }
+        if (order.customerEmail) {
+          await sendOrderReceipt({
+            orderNumber: order.orderNumber,
+            gameName: order.game.name,
+            productName: order.product.name,
+            playerUid: order.playerUid,
+            amountUsd: order.amountUsd,
+            amountKhr: order.amountKhr,
+            currency: order.currency,
+            paidAt: order.paidAt,
+            deliveredAt: order.deliveredAt,
+            status: order.status,
+            customerEmail: order.customerEmail,
           });
         }
+      } else if (remote?.status === "expired" || remote?.status === "failed") {
+        order = await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: remote.status === "expired" ? "CANCELLED" : "FAILED",
+            failureReason: `Payment ${remote.status}`,
+          },
+          include: {
+            game: { select: { name: true, slug: true } },
+            product: { select: { name: true } },
+          },
+        });
+      } else if (remote?.status === "AMOUNT_MISMATCH") {
+        // Log the mismatch but don't update order status
+        console.warn(`[order] Amount mismatch for ${order.orderNumber}: expected ${order.amountUsd}, got ${remote.amount}`);
       }
-     } catch {
-       // Silently ignore poll errors â€” we'll retry on the next request.
-     }
-   }
+    } catch (e) {
+      console.warn("[order] Poll error:", e);
+      // Silently ignore poll errors — we'll retry on the next request.
+    }
+  }
 
   return NextResponse.json({
     orderNumber: order.orderNumber,
