@@ -15,6 +15,7 @@ function getSecret() {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === "development" ? "development_secret_key_at_least_32_characters_long" : null);
   
   if (!secret || secret.length < 32) {
+    console.error("JWT_SECRET missing or too short. Length:", secret?.length);
     throw new Error("JWT_SECRET or NEXTAUTH_SECRET must be set and at least 32 characters");
   }
   return new TextEncoder().encode(secret);
