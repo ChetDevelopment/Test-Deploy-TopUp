@@ -98,6 +98,17 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
+    // In production, if external API fails, return a generic success with warning
+    // This prevents blocking orders when the lookup service is down
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({
+        success: true,
+        name: `Player ${uid}`,
+        uid,
+        serverId: serverId ?? null,
+        warning: "ID verification service unavailable - please double-check your ID",
+      });
+    }
     return NextResponse.json(
       { success: false, error: aborted ? "Lookup timed out" : "Network error" },
       { status: 504 }

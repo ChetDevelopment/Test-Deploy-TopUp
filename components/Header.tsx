@@ -41,23 +41,23 @@ export default function Header() {
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative h-11 w-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-royal-primary via-royal-accent to-royal-gold p-[1px] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-2xl shadow-royal-primary/20">
-            <div className="h-full w-full rounded-[15px] bg-royal-bg flex items-center justify-center">
-              <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-br from-royal-primary to-royal-accent">TK</span>
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display text-xl font-bold tracking-tight text-royal-text">
-              Ty Khai <span className="text-royal-primary italic">TopUp</span>
-            </span>
-            <div className="flex items-center gap-1">
-              <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[9px] text-royal-muted font-bold tracking-widest uppercase">System Online</span>
-            </div>
-          </div>
-        </Link>
+         {/* Logo */}
+         <Link href="/" className="flex items-center gap-3 group">
+           <div className="relative h-11 w-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-royal-primary/10 via-royal-accent/10 to-royal-gold/10 p-[1px] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-2xl shadow-royal-primary/20">
+             <div className="h-full w-full rounded-[15px] bg-royal-bg flex items-center justify-center overflow-hidden">
+               <img src="/logo.png" alt="Ty Khai TopUp" className="h-9 w-9 object-contain" />
+             </div>
+           </div>
+           <div className="flex flex-col">
+             <span className="font-display text-xl font-bold tracking-tight text-royal-text">
+               Ty Khai <span className="text-royal-primary italic">TopUp</span>
+             </span>
+             <div className="flex items-center gap-1">
+               <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
+               <span className="text-[9px] text-royal-muted font-bold tracking-widest uppercase">System Online</span>
+             </div>
+           </div>
+         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-2xl border border-royal-border/30 bg-royal-card/30 backdrop-blur-md">

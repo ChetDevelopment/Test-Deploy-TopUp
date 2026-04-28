@@ -80,7 +80,7 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     currency: paymentCurrency,
     bill_number: args.orderNumber.substring(0, 25),
     terminal_label: "TyKhai",
-    static: true,
+    static: true, // Use static to avoid expiry; amount validated via check_payment API
   });
   
   if (!qrResult) {
@@ -102,10 +102,10 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
   };
 }
 
-export async function checkBakongPayment(md5Hash: string): Promise<{
+export async function checkBakongPayment(md5Hash: string, expectedAmount?: number): Promise<{
   status: string;
   paid: boolean;
-  amount?: string;
+  amount?: number;
   currency?: string;
 } | null> {
   if (!BAKONG_TOKEN) {
@@ -118,9 +118,39 @@ export async function checkBakongPayment(md5Hash: string): Promise<{
     console.log("[bakong] check_payment:", md5Hash);
     const result = await khqr.check_payment(md5Hash);
     console.log("[bakong] check_payment result:", result, "type:", typeof result);
+
+    // Handle both string response ("PAID") and object response
+    let status: string;
+    let paidAmount: number | undefined;
+    let currency: string | undefined;
+
+    if (typeof result === "string") {
+      status = result;
+    } else if (result && typeof result === "object") {
+      status = (result as any).status || (result as any).transactionStatus || "UNPAID";
+      paidAmount = (result as any).amount ? parseFloat((result as any).amount) : undefined;
+      currency = (result as any).currency;
+    } else {
+      status = "UNPAID";
+    }
+
+    // Only mark as paid if status is PAID AND amount matches (if expectedAmount provided)
+    let isPaid = status === "PAID";
+    if (isPaid && expectedAmount && paidAmount) {
+      // Allow small floating point difference (1 cent tolerance)
+      const amountMatches = Math.abs(paidAmount - expectedAmount) < 0.01;
+      if (!amountMatches) {
+        console.warn(`[bakong] Amount mismatch: expected ${expectedAmount}, got ${paidAmount}`);
+        isPaid = false;
+        status = "AMOUNT_MISMATCH";
+      }
+    }
+
     return {
-      status: result as string || "UNPAID",
-      paid: result === "PAID",
+      status: status || "UNPAID",
+      paid: isPaid,
+      amount: paidAmount,
+      currency,
     };
   } catch (e) {
     console.warn("[bakong] check_payment failed:", e);

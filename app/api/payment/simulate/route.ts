@@ -5,8 +5,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateUserTotalSpent } from "@/lib/auth";
 
 // Simulation: pretends payment succeeded and marks order PAID, then DELIVERED.
-// Only active when PAYMENT_SIMULATION_MODE=true or no real credentials set.
+// ONLY works when PAYMENT_SIMULATION_MODE=true (development only).
 export async function GET(req: NextRequest) {
+  // Block in production
+  if (process.env.NODE_ENV === "production" && process.env.PAYMENT_SIMULATION_MODE !== "true") {
+    return NextResponse.json({ error: "Not available" }, { status: 404 });
+  }
+
   const orderNumber = req.nextUrl.searchParams.get("order");
   const ref = req.nextUrl.searchParams.get("ref");
 

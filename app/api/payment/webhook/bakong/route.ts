@@ -28,9 +28,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    const result = await checkBakongPayment(md5Hash);
+    const result = await checkBakongPayment(md5Hash, order.amountUsd);
     if (!result || !result.paid) {
-      return NextResponse.json({ status: "UNPAID" });
+      return NextResponse.json({ status: result?.status || "UNPAID" });
     }
 
     await prisma.order.update({

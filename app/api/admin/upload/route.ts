@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import crypto from "crypto";
+import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 
@@ -48,16 +47,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate a safe random filename — ignore the client-supplied name
-    // entirely to prevent path traversal and collisions.
     const name = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadsDir, name), buffer);
+
+    // Use Vercel Blob for persistent storage (Vercel filesystem is read-only)
+    const blob = await put(`uploads/${name}`, buffer, {
+      access: "public",
+      contentType: file.type,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
 
     return NextResponse.json({
-      url: `/uploads/${name}`,
+      url: blob.url,
       size: file.size,
       type: file.type,
     });
