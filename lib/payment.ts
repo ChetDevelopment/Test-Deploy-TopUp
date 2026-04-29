@@ -102,11 +102,6 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     throw new Error("Bakong not configured. Check BAKONG_ACCOUNT, BAKONG_MERCHANT_NAME, BAKONG_TOKEN in environment variables.");
   }
 
-  // Validate account format (should be phone number, not email)
-  if (BAKONG_ACCOUNT.includes('@')) {
-    throw new Error(`BAKONG_ACCOUNT should be a phone number (e.g., 855123456789), not email: ${BAKONG_ACCOUNT}`);
-  }
-
   const paymentCurrency = args.currency === "KHR" ? "KHR" : "USD";
   const rawAmount = args.currency === "KHR" ? args.amountKhr : args.amountUsd;
   const amount = Number(rawAmount);
@@ -117,10 +112,9 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
 
   const khqr = new KHQR(BAKONG_TOKEN, "https://api-bakong.nbc.gov.kh/v1");
 
-  // Test token validity by making a simple call
+  // Test token validity
   try {
-    console.log("[bakong] Testing token validity...");
-    // Try to generate a test QR to verify token works
+    console.log("[bakong] Testing token validity with account:", BAKONG_ACCOUNT);
     const testQr = khqr.create_qr({
       bank_account: BAKONG_ACCOUNT,
       merchant_name: "TEST",
@@ -134,9 +128,9 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     if (!testQr) {
       throw new Error("Bakong token appears invalid - QR generation returned null");
     }
-    console.log("[bakong] Token is valid");
+    console.log("[bakong] Token is valid, QR generated successfully");
   } catch (testError: any) {
-    throw new Error(`Bakong token validation failed: ${testError.message}. Get a new token from https://bkrt.com.kh/`);
+    throw new Error(`Bakong configuration error: ${testError.message}. Check BAKONG_ACCOUNT format and BAKONG_TOKEN validity.`);
   }
 
   const qrResult = khqr.create_qr({
