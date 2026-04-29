@@ -86,34 +86,6 @@ export async function initiatePayment(
   throw new Error(`Unsupported payment method: ${args.method}`);
 }
 
-export interface PaymentInitResult {
-  paymentRef: string;
-  redirectUrl: string;
-  qrString?: string | null;
-  expiresAt: Date;
-  instructions?: string | null;
-}
-
-const SIM_MODE = process.env.PAYMENT_SIMULATION_MODE === "true";
-
-const BAKONG_ACCOUNT = process.env.BAKONG_ACCOUNT || "";
-const BAKONG_MERCHANT_NAME = process.env.BAKONG_MERCHANT_NAME || "";
-const BAKONG_MERCHANT_CITY = process.env.BAKONG_MERCHANT_CITY || "Phnom Penh";
-const BAKONG_TOKEN = process.env.BAKONG_TOKEN || "";
-
-export async function initiatePayment(
-  args: InitiatePaymentArgs
-): Promise<PaymentInitResult> {
-  if (args.method === "BAKONG" && BAKONG_TOKEN) return initiateBakong(args);
-  
-  if (SIM_MODE) return simulatePayment(args);
-  if (args.method === "TRUEMONEY") return initiateTrueMoney(args);
-  if (args.method === "WING") return initiateWing(args);
-  if (args.method === "BANK") return initiateBankTransfer(args);
-  if (args.method === "USDT") return initiateUsdt(args);
-  throw new Error(`Unsupported payment method: ${args.method}`);
-}
-
 function simulatePayment(args: InitiatePaymentArgs): PaymentInitResult {
   const ref = `SIM-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -185,7 +157,6 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
   try {
     console.log("[bakong] check_payment:", md5Hash);
     
-    // Use get_payment() instead of check_payment() to get actual amount paid
     const result = await khqr.get_payment(md5Hash);
     console.log("[bakong] get_payment result:", JSON.stringify(result));
 
@@ -193,17 +164,14 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
       return { status: "UNPAID", paid: false };
     }
 
-    // get_payment returns object with: hash, fromAccountId, toAccountId, currency, amount, etc.
     const paymentResult = result as any;
     const status = paymentResult.trackingStatus || paymentResult.status || "UNPAID";
     const paidAmount = paymentResult.amount ? parseFloat(String(paymentResult.amount)) : undefined;
     const currency = paymentResult.currency;
 
-    // Check if payment exists and is completed
     const isPaid = status === "PAID" || status === "COMPLETED" || status === "ACKNOWLEDGED";
     
     if (isPaid && expectedAmount && paidAmount) {
-      // Allow small floating point difference (1 cent tolerance)
       const amountMatches = Math.abs(paidAmount - expectedAmount) < 0.01;
       if (!amountMatches) {
         console.warn(`[bakong] Amount mismatch: expected ${expectedAmount}, got ${paidAmount}`);
@@ -224,8 +192,6 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
     };
   } catch (e) {
     console.warn("[bakong] get_payment failed:", e);
-    // DO NOT fallback to check_payment - it doesn't return amount info
-    // Without amount validation, we cannot trust the payment
     return null;
   }
 }
@@ -251,7 +217,6 @@ export async function checkUsdtPayment(
   try {
     console.log("[usdt] Checking payments to:", walletAddress);
     
-    // Query TRC20 USDT transactions to this wallet
     const url = `${TRONGRID_API}/v1/accounts/${walletAddress}/transactions/trc20?` +
       `limit=50&contract_address=${USDT_CONTRACT}&only_confirmed=true&` +
       `min_timestamp=${orderTimestamp}&order_by=block_timestamp,desc`;
@@ -259,8 +224,6 @@ export async function checkUsdtPayment(
     const response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
-        // Optional: Add API key if you have one
-        // "TRON-PRO-API-KEY": process.env.TRONGRID_API_KEY || "",
       },
     });
 
@@ -274,9 +237,8 @@ export async function checkUsdtPayment(
 
     console.log("[usdt] Found", transactions.length, "transactions");
 
-    // Find transaction matching expected amount
     for (const tx of transactions) {
-      const txAmount = tx.value ? tx.value / 1000000 : 0; // USDT has 6 decimals
+      const txAmount = tx.value ? tx.value / 1000000 : 0;
       const amountMatches = Math.abs(txAmount - expectedAmount) < 0.01;
 
       if (amountMatches) {
