@@ -99,7 +99,12 @@ function simulatePayment(args: InitiatePaymentArgs): PaymentInitResult {
 
 async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
   if (!BAKONG_ACCOUNT || !BAKONG_MERCHANT_NAME || !BAKONG_TOKEN) {
-    throw new Error("Bakong not configured. Check BAKONG_ACCOUNT, BAKONG_MERCHANT_NAME, BAKONG_TOKEN");
+    throw new Error("Bakong not configured. Check BAKONG_ACCOUNT, BAKONG_MERCHANT_NAME, BAKONG_TOKEN in environment variables.");
+  }
+
+  // Validate account format (should be phone number, not email)
+  if (BAKONG_ACCOUNT.includes('@')) {
+    throw new Error(`BAKONG_ACCOUNT should be a phone number (e.g., 855123456789), not email: ${BAKONG_ACCOUNT}`);
   }
 
   const paymentCurrency = args.currency === "KHR" ? "KHR" : "USD";
@@ -111,6 +116,28 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
   }
 
   const khqr = new KHQR(BAKONG_TOKEN, "https://api-bakong.nbc.gov.kh/v1");
+
+  // Test token validity by making a simple call
+  try {
+    console.log("[bakong] Testing token validity...");
+    // Try to generate a test QR to verify token works
+    const testQr = khqr.create_qr({
+      bank_account: BAKONG_ACCOUNT,
+      merchant_name: "TEST",
+      amount: 0.01,
+      currency: "USD",
+      bill_number: "TEST",
+      terminal_label: "Test",
+      static: true,
+    });
+    
+    if (!testQr) {
+      throw new Error("Bakong token appears invalid - QR generation returned null");
+    }
+    console.log("[bakong] Token is valid");
+  } catch (testError: any) {
+    throw new Error(`Bakong token validation failed: ${testError.message}. Get a new token from https://bkrt.com.kh/`);
+  }
 
   const qrResult = khqr.create_qr({
     bank_account: BAKONG_ACCOUNT,
@@ -124,7 +151,7 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
   });
   
   if (!qrResult) {
-    throw new Error("Bakong: failed to generate QR");
+    throw new Error("Bakong: failed to generate QR - check if token is valid and account format is correct (should be phone number)");
   }
 
   const md5Hash = khqr.generate_md5(qrResult);
