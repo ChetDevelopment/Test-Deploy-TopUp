@@ -230,6 +230,73 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
   }
 }
 
+// USDT TRC20 Contract Address
+const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+const TRONGRID_API = "https://api.trongrid.io";
+
+export async function checkUsdtPayment(
+  walletAddress: string,
+  expectedAmount: number,
+  orderTimestamp: number
+): Promise<{
+  status: string;
+  paid: boolean;
+  txId?: string;
+  amount?: number;
+} | null> {
+  if (!walletAddress) {
+    return null;
+  }
+
+  try {
+    console.log("[usdt] Checking payments to:", walletAddress);
+    
+    // Query TRC20 USDT transactions to this wallet
+    const url = `${TRONGRID_API}/v1/accounts/${walletAddress}/transactions/trc20?` +
+      `limit=50&contract_address=${USDT_CONTRACT}&only_confirmed=true&` +
+      `min_timestamp=${orderTimestamp}&order_by=block_timestamp,desc`;
+
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        // Optional: Add API key if you have one
+        // "TRON-PRO-API-KEY": process.env.TRONGRID_API_KEY || "",
+      },
+    });
+
+    if (!response.ok) {
+      console.warn("[usdt] TronGrid API error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const transactions = data.data || [];
+
+    console.log("[usdt] Found", transactions.length, "transactions");
+
+    // Find transaction matching expected amount
+    for (const tx of transactions) {
+      const txAmount = tx.value ? tx.value / 1000000 : 0; // USDT has 6 decimals
+      const amountMatches = Math.abs(txAmount - expectedAmount) < 0.01;
+
+      if (amountMatches) {
+        console.log("[usdt] Found matching transaction:", tx.transaction_id);
+        return {
+          status: "PAID",
+          paid: true,
+          txId: tx.transaction_id,
+          amount: txAmount,
+        };
+      }
+    }
+
+    return { status: "UNPAID", paid: false };
+  } catch (e) {
+    console.warn("[usdt] check failed:", e);
+    return null;
+  }
+}
+
 async function initiateTrueMoney(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
   if (!TRUEMONEY_PHONE) {
     throw new Error("TrueMoney not configured. Set TRUEMONEY_PHONE in environment variables.");

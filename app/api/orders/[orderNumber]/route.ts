@@ -74,10 +74,51 @@ export async function GET(
           // Log the mismatch but don't update order status
           console.warn(`[order] Amount mismatch for ${order.orderNumber}: expected ${order.amountUsd}, got ${remote.amount}`);
         }
+      } else if (order.paymentMethod === "USDT" && USDT_WALLET) {
+        // Auto-verify USDT payments via TronGrid API
+        const remote = await checkUsdtPayment(
+          USDT_WALLET,
+          order.amountUsd,
+          order.createdAt.getTime()
+        );
+        
+        console.log("[order] checkUsdtPayment:", order.paymentRef, "→", remote);
+        
+        if (remote && remote.paid) {
+          order = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              status: "PAID",
+              paidAt: new Date(),
+              paymentRef: remote.txId ? `USDT-${remote.txId}` : order.paymentRef,
+            },
+            include: {
+              game: { select: { name: true, slug: true } },
+              product: { select: { name: true } },
+            },
+          });
+          if (order.userId) {
+            await updateUserTotalSpent(order.userId, order.amountUsd);
+          }
+          if (order.customerEmail) {
+            await sendOrderReceipt({
+              orderNumber: order.orderNumber,
+              gameName: order.game.name,
+              productName: order.product.name,
+              playerUid: order.playerUid,
+              amountUsd: order.amountUsd,
+              amountKhr: order.amountKhr,
+              currency: order.currency,
+              paidAt: order.paidAt,
+              deliveredAt: order.deliveredAt,
+              status: order.status,
+              customerEmail: order.customerEmail,
+            });
+          }
+        }
       } else {
-        // For manual payments (TrueMoney, Wing, Bank, USDT), check if admin has marked as paid
+        // For manual payments (TrueMoney, Wing, Bank), check if admin has marked as paid
         // The order status will be updated via webhook or admin panel
-        // This is just a polling check - no automatic verification for manual payments
         console.log("[order] Manual payment pending verification:", order.paymentRef);
       }
     } catch (e) {
