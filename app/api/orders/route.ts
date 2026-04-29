@@ -248,6 +248,15 @@ export async function POST(req: NextRequest) {
     // Payment gateway
     const publicUrl = process.env.PUBLIC_APP_URL || baseUrl;
     const paymentMethod = data.paymentMethod as PaymentMethod;
+    
+    // Check if payment method is configured
+    if (!isPaymentMethodConfigured(paymentMethod)) {
+      return NextResponse.json(
+        { error: `Payment method ${paymentMethod} is not configured. Please set the required environment variables.` },
+        { status: 500 }
+      );
+    }
+    
     const init = await initiatePayment({
       orderNumber: order.orderNumber,
       amountUsd: order.amountUsd,
