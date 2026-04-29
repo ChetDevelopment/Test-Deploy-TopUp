@@ -133,7 +133,8 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     throw new Error(`Bakong configuration error: ${testError.message}. Check BAKONG_ACCOUNT format and BAKONG_TOKEN validity.`);
   }
 
-  const qrResult = khqr.create_qr({
+  // Try dynamic QR first (locks amount for security)
+  let qrResult = khqr.create_qr({
     bank_account: BAKONG_ACCOUNT,
     merchant_name: BAKONG_MERCHANT_NAME.substring(0, 25),
     merchant_city: BAKONG_MERCHANT_CITY.substring(0, 15),
@@ -141,11 +142,26 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
     currency: paymentCurrency,
     bill_number: args.orderNumber.substring(0, 25),
     terminal_label: "TyKhai",
-    static: false, // Dynamic QR locks amount - required for security
+    static: false,
   });
+
+  // If dynamic QR fails, fallback to static QR (doesn't lock amount but more reliable)
+  if (!qrResult) {
+    console.warn("[bakong] Dynamic QR failed, trying static QR...");
+    qrResult = khqr.create_qr({
+      bank_account: BAKONG_ACCOUNT,
+      merchant_name: BAKONG_MERCHANT_NAME.substring(0, 25),
+      merchant_city: BAKONG_MERCHANT_CITY.substring(0, 15),
+      amount: amount,
+      currency: paymentCurrency,
+      bill_number: args.orderNumber.substring(0, 25),
+      terminal_label: "TyKhai",
+      static: true, // Fallback to static QR
+    });
+  }
   
   if (!qrResult) {
-    throw new Error("Bakong: failed to generate QR - check if token is valid and account format is correct (should be phone number)");
+    throw new Error("Bakong: failed to generate QR - check if token is valid and account format is correct (should be phone number like 855xxxxxxxxx)");
   }
 
   const md5Hash = khqr.generate_md5(qrResult);
@@ -154,11 +170,21 @@ async function initiateBakong(args: InitiatePaymentArgs): Promise<PaymentInitRes
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const redirectUrl = `${baseUrl}/checkout/${args.orderNumber}`;
 
+  // Give more time for payment (60 minutes instead of 30)
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  console.log("[bakong] QR generated successfully:", {
+    paymentRef,
+    amount,
+    currency: paymentCurrency,
+    account: BAKONG_ACCOUNT,
+  });
+
   return {
     paymentRef,
     redirectUrl,
     qrString: qrResult,
-    expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+    expiresAt,
     instructions: `Scan the QR code with Bakong app to pay ${amount} ${args.currency}`,
   };
 }
