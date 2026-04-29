@@ -102,6 +102,7 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<any>(null);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/me")
@@ -258,124 +259,239 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex items-center gap-2">
                        <Activity size={14} className="text-royal-muted" />
-                       <span className="text-[10px] font-bold text-royal-muted uppercase">KHQR Network Live</span>
+                       <span className="text-[10px] font-bold text-royal-muted uppercase">
+                         {order.paymentMethod === "BAKONG" ? "KHQR Network Live" : "Manual Payment"}
+                       </span>
                     </div>
                   </div>
 
-                  <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] items-start">
-                    <div className="relative mx-auto w-full max-w-[340px]">
-                      <div className="absolute -inset-4 rounded-[2.25rem] bg-[radial-gradient(circle_at_top,_rgba(239,68,68,0.30),_rgba(255,255,255,0)_68%)] blur-xl" />
-                      <div className="relative overflow-hidden rounded-[1.75rem] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]">
-                        <div className="bg-[#E11D2E] px-6 py-4 text-center">
-                          <div className="text-[1.75rem] font-black tracking-[-0.06em] text-white">KHQR</div>
-                        </div>
-
-                        <div className="relative bg-white px-6 pb-6 pt-5 text-slate-900">
-                          <div className="absolute right-0 top-0 h-0 w-0 border-l-[24px] border-l-transparent border-t-[24px] border-t-[#E11D2E]" />
-
-                          <div className="mb-1 text-sm font-medium text-slate-500">{qrTitle}</div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{qrSubtitle}</div>
-
-                          <div className="mt-4 flex items-end gap-2">
-                            <span className="text-4xl font-black leading-none tracking-[-0.06em] text-slate-950 sm:text-[2.7rem]">
-                              {primaryAmount}
-                            </span>
-                            <span className="pb-1 text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
-                              {paymentCurrency}
-                            </span>
+                  {order.paymentMethod === "BAKONG" ? (
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] items-start">
+                      <div className="relative mx-auto w-full max-w-[340px]">
+                        <div className="absolute -inset-4 rounded-[2.25rem] bg-[radial-gradient(circle_at_top,_rgba(239,68,68,0.30),_rgba(255,255,255,0)_68%)] blur-xl" />
+                        <div className="relative overflow-hidden rounded-[1.75rem] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]">
+                          <div className="bg-[#E11D2E] px-6 py-4 text-center">
+                            <div className="text-[1.75rem] font-black tracking-[-0.06em] text-white">KHQR</div>
                           </div>
 
-                          {secondaryAmount && (
-                            <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                              {secondaryAmount}
+                          <div className="relative bg-white px-6 pb-6 pt-5 text-slate-900">
+                            <div className="absolute right-0 top-0 h-0 w-0 border-l-[24px] border-l-transparent border-t-[24px] border-t-[#E11D2E]" />
+
+                            <div className="mb-1 text-sm font-medium text-slate-500">{qrTitle}</div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{qrSubtitle}</div>
+
+                            <div className="mt-4 flex items-end gap-2">
+                              <span className="text-4xl font-black leading-none tracking-[-0.06em] text-slate-950 sm:text-[2.7rem]">
+                                {primaryAmount}
+                              </span>
+                              <span className="pb-1 text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                                {paymentCurrency}
+                              </span>
                             </div>
-                          )}
 
-                          <div className="my-5 border-t border-dashed border-slate-300" />
-
-                          <div className="relative mx-auto aspect-square w-full max-w-[230px]">
-                            {order.qrString ? (
-                              <img
-                                src={qrImageUrl(order.qrString, 360)}
-                                alt={`KHQR payment for ${order.orderNumber}`}
-                                className="h-full w-full object-contain"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full flex-col items-center justify-center rounded-[1.25rem] bg-slate-100 p-6 text-center text-slate-400">
-                                <QrCode size={52} className="mb-3 opacity-20" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Dev Protocol Active</p>
+                            {secondaryAmount && (
+                              <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                  {secondaryAmount}
                               </div>
                             )}
 
-                            <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-white bg-slate-950 text-2xl font-black text-white shadow-lg">
-                              {paymentCurrency === "KHR" ? "៛" : "$"}
+                            <div className="my-5 border-t border-dashed border-slate-300" />
+
+                            <div className="relative mx-auto aspect-square w-full max-w-[230px]">
+                              {order.qrString ? (
+                                <img
+                                  src={qrImageUrl(order.qrString, 360)}
+                                  alt={`KHQR payment for ${order.orderNumber}`}
+                                  className="h-full w-full object-contain"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full flex-col items-center justify-center rounded-[1.25rem] bg-slate-100 p-6 text-center text-slate-400">
+                                  <QrCode size={52} className="mb-3 opacity-20" />
+                                  <p className="text-xs font-bold uppercase tracking-widest">Dev Protocol Active</p>
+                                </div>
+                              )}
+
+                              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-white bg-slate-950 text-2xl font-black text-white shadow-lg">
+                                {paymentCurrency === "KHR" ? "៛" : "$"}
+                              </div>
+                            </div>
+
+                            <div className="mt-5 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              <span>Verified KHQR</span>
+                              <span>{order.orderNumber}</span>
                             </div>
                           </div>
-
-                          <div className="mt-5 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                            <span>Verified KHQR</span>
-                            <span>{order.orderNumber}</span>
-                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-4">
-                      <div className="card p-6 border-royal-primary/20">
-                        <div className="mb-3 flex items-center gap-2">
-                          <ShieldCheck size={16} className="text-royal-primary" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-royal-primary">
-                            Exact Payment Required
-                          </span>
+                      <div className="space-y-4">
+                        <div className="card p-6 border-royal-primary/20">
+                          <div className="mb-3 flex items-center gap-2">
+                            <ShieldCheck size={16} className="text-royal-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-royal-primary">
+                              Exact Payment Required
+                            </span>
+                          </div>
+                          <div className="text-3xl font-black tracking-tight text-white sm:text-[2.1rem]">{displayTotal}</div>
+                          <p className="mt-2 text-sm leading-relaxed text-royal-muted">
+                            The QR above should be confirmed at this amount before the customer finishes payment.
+                          </p>
+                          {secondaryAmount && (
+                            <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-royal-muted">
+                              Reference: <span className="font-bold text-royal-text">{secondaryAmount.replace(/^Approx\. /, "")}</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-3xl font-black tracking-tight text-white sm:text-[2.1rem]">{displayTotal}</div>
-                        <p className="mt-2 text-sm leading-relaxed text-royal-muted">
-                          The QR above should be confirmed at this amount before the customer finishes payment.
-                        </p>
-                        {secondaryAmount && (
-                          <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-royal-muted">
-                            Reference: <span className="font-bold text-royal-text">{secondaryAmount.replace(/^Approx\. /, "")}</span>
+
+                        {remainingMs !== null && (
+                          <div className="card p-6 border-royal-accent/20 bg-royal-accent/5">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-2">
+                                <Clock size={16} className="text-royal-accent" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-royal-accent/70">Time Remaining</span>
+                              </div>
+                              <div className="font-mono text-2xl font-black text-royal-accent">
+                                {Math.floor(remainingMs / 60000)}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
+                              </div>
+                            </div>
                           </div>
                         )}
-                      </div>
 
-                      {remainingMs !== null && (
-                        <div className="card p-6 border-royal-accent/20 bg-royal-accent/5">
-                          <div className="flex items-center justify-between gap-4">
+                        <div className="rounded-[2rem] border border-royal-primary/20 bg-royal-primary/10 p-6">
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-royal-primary/15 text-royal-primary">
+                              <Smartphone size={20} />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm font-bold text-royal-text">Scan with ABA Pay, ACLEDA, Wing, or any KHQR wallet.</p>
+                              <p className="text-sm leading-relaxed text-royal-muted">
+                                Ask the customer to review the exact {paymentCurrency} amount on their banking app, then confirm the transfer.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setShowCancelModal(true)}
+                          disabled={cancelling || isPaid || isExpired}
+                          className="w-full mt-4 p-3 rounded-xl border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Cancel Payment
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Manual Payment Instructions */
+                    <div className="space-y-6">
+                      <div className="card p-8 border-royal-accent/20">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="h-12 w-12 rounded-2xl bg-royal-accent/15 flex items-center justify-center">
+                            {order.paymentMethod === "TRUEMONEY" && <span className="text-xl font-black text-royal-accent">TM</span>}
+                            {order.paymentMethod === "WING" && <span className="text-xl font-black text-royal-accent">W</span>}
+                            {order.paymentMethod === "BANK" && <span className="text-xl font-black text-royal-accent">B</span>}
+                            {order.paymentMethod === "USDT" && <span className="text-xl font-black text-royal-accent">USDT</span>}
+                          </div>
+                          <div>
+                            <h3 className="font-black text-lg uppercase">{order.paymentMethod.replace("_", " ")} Payment</h3>
+                            <p className="text-royal-muted text-xs uppercase tracking-widest">Complete the transfer below</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-royal-bg/50 rounded-2xl p-6 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-royal-muted text-xs uppercase font-bold tracking-widest">Amount to Send</span>
+                            <span className="text-3xl font-black text-royal-primary">{displayTotal}</span>
+                          </div>
+
+                          {order.paymentMethod === "USDT" && (
+                            <div className="p-4 rounded-xl bg-royal-accent/10 border border-royal-accent/20">
+                              <div className="text-xs text-royal-muted mb-1 uppercase font-bold tracking-widest">USDT Wallet (TRC20)</div>
+                              <div className="font-mono text-sm font-bold break-all">Configure via admin settings</div>
+                              <p className="text-xs text-royal-muted mt-1">Admin needs to set USDT_WALLET env variable</p>
+                            </div>
+                          )}
+
+                          {order.paymentMethod === "BANK" && (
+                            <div className="p-4 rounded-xl bg-royal-accent/10 border border-royal-accent/20 space-y-2">
+                              <div className="text-xs text-royal-muted uppercase font-bold tracking-widest">Bank Details</div>
+                              <div className="text-sm"><span className="text-royal-muted">Bank:</span> <span className="font-bold">ABA Bank</span></div>
+                              <div className="text-sm"><span className="text-royal-muted">Account:</span> <span className="font-bold font-mono">Configure via admin</span></div>
+                              <div className="text-sm"><span className="text-royal-muted">Name:</span> <span className="font-bold">Ty Khai TopUp</span></div>
+                            </div>
+                          )}
+
+                          {(order.paymentMethod === "TRUEMONEY" || order.paymentMethod === "WING") && (
+                            <div className="p-4 rounded-xl bg-royal-accent/10 border border-royal-accent/20">
+                              <div className="text-xs text-royal-muted mb-1 uppercase font-bold tracking-widest">
+                                {order.paymentMethod === "TRUEMONEY" ? "TrueMoney" : "Wing"} Number
+                              </div>
+                              <div className="font-mono text-sm font-bold">
+                                Configure via admin settings
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle size={16} className="text-yellow-500 mt-0.5 shrink-0" />
+                              <div className="text-xs text-yellow-500/90">
+                                <p className="font-bold uppercase mb-1">Important:</p>
+                                <p>Include reference "<span className="font-bold">{order.paymentRef}</span>" when transferring</p>
+                                <p className="mt-1">Send exactly {displayTotal} to avoid delays</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {remainingMs !== null && (
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-royal-bg/30 border border-royal-border">
                             <div className="flex items-center gap-2">
                               <Clock size={16} className="text-royal-accent" />
                               <span className="text-[10px] font-black uppercase tracking-widest text-royal-accent/70">Time Remaining</span>
                             </div>
-                            <div className="font-mono text-2xl font-black text-royal-accent">
+                            <div className="font-mono text-xl font-black text-royal-accent">
                               {Math.floor(remainingMs / 60000)}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      <div className="rounded-[2rem] border border-royal-primary/20 bg-royal-primary/10 p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-royal-primary/15 text-royal-primary">
-                            <Smartphone size={20} />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-sm font-bold text-royal-text">Scan with ABA Pay, ACLEDA, Wing, or any KHQR wallet.</p>
-                            <p className="text-sm leading-relaxed text-royal-muted">
-                              Ask the customer to review the exact {paymentCurrency} amount on their banking app, then confirm the transfer.
-                            </p>
-                          </div>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={async () => {
+                              setVerifying(true);
+                              try {
+                                const res = await fetch(`/api/orders/${encodeURIComponent(orderNumber)}`);
+                                const data = await res.json();
+                                if (data.status === "PAID" || data.status === "PROCESSING" || data.status === "DELIVERED") {
+                                  setOrder(data);
+                                  setShowReceipt(true);
+                                  setHasAutoOpened(true);
+                                } else {
+                                  alert("Payment not yet verified. Please ensure you have completed the transfer with the correct reference.");
+                                }
+                              } catch (e) {
+                                alert("Error verifying payment. Please try again.");
+                              } finally {
+                                setVerifying(false);
+                              }
+                            }}
+                            disabled={verifying || isPaid || isExpired}
+                            className="flex-1 p-3 rounded-xl bg-royal-accent/10 border border-royal-accent/30 text-royal-accent text-xs font-bold uppercase tracking-widest hover:bg-royal-accent/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {verifying ? "Verifying..." : "I've Completed the Transfer"}
+                          </button>
+
+                          <button
+                            onClick={() => setShowCancelModal(true)}
+                            disabled={cancelling || isPaid || isExpired}
+                            className="flex-1 p-3 rounded-xl border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
-
-                      <button
-                        onClick={() => setShowCancelModal(true)}
-                        disabled={cancelling || isPaid || isExpired}
-                        className="w-full mt-4 p-3 rounded-xl border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Cancel Payment
-                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

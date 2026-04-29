@@ -15,7 +15,7 @@ const createOrderSchema = z.object({
   serverId: z.string().optional(),
   customerEmail: z.string().email().optional(),
   customerPhone: z.string().optional(),
-  paymentMethod: z.enum(["WALLET", "BAKONG"]),
+  paymentMethod: z.enum(["WALLET", "BAKONG", "TRUEMONEY", "WING", "BANK", "USDT"]),
   currency: z.enum(["USD", "KHR"]).optional().default("USD"),
   promoCode: z.string().optional(),
   playerNickname: z.string().max(100).optional(),

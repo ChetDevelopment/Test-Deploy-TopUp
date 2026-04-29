@@ -2,6 +2,7 @@
 import { KHQR } from "bakong-khqr-npm";
 
 export type PaymentMethod = "BAKONG" | "WALLET" | "TRUEMONEY" | "WING" | "BANK" | "USDT" | "MANUAL";
+
 export type PaymentCurrency = "USD" | "KHR" | "USDT";
 
 export interface InitiatePaymentArgs {
@@ -16,6 +17,73 @@ export interface InitiatePaymentArgs {
   note?: string;
   customerEmail?: string;
   metadata?: Record<string, string>;
+}
+
+export interface PaymentInitResult {
+  paymentRef: string;
+  redirectUrl: string;
+  qrString?: string | null;
+  expiresAt: Date;
+  instructions?: string | null;
+}
+
+const SIM_MODE = process.env.PAYMENT_SIMULATION_MODE === "true";
+
+const BAKONG_ACCOUNT = process.env.BAKONG_ACCOUNT || "";
+const BAKONG_MERCHANT_NAME = process.env.BAKONG_MERCHANT_NAME || "";
+const BAKONG_MERCHANT_CITY = process.env.BAKONG_MERCHANT_CITY || "Phnom Penh";
+const BAKONG_TOKEN = process.env.BAKONG_TOKEN || "";
+
+// TrueMoney configuration
+const TRUEMONEY_PHONE = process.env.TRUEMONEY_PHONE || "";
+const TRUEMONEY_API_KEY = process.env.TRUEMONEY_API_KEY || "";
+const TRUEMONEY_MERCHANT_ID = process.env.TRUEMONEY_MERCHANT_ID || "";
+
+// Wing configuration
+const WING_PHONE = process.env.WING_PHONE || "";
+const WING_API_KEY = process.env.WING_API_KEY || "";
+const WING_MERCHANT_ID = process.env.WING_MERCHANT_ID || "";
+
+// Bank Transfer configuration
+const BANK_NAME = process.env.BANK_NAME || "ABA Bank";
+const BANK_ACCOUNT = process.env.BANK_ACCOUNT || "";
+const BANK_ACCOUNT_NAME = process.env.BANK_ACCOUNT_NAME || "Ty Khai TopUp";
+const BANK_BRANCH = process.env.BANK_BRANCH || "";
+
+// USDT configuration
+const USDT_WALLET = process.env.USDT_WALLET || "";
+
+export function isPaymentMethodConfigured(method: PaymentMethod): boolean {
+  switch (method) {
+    case "BAKONG":
+      return !!(BAKONG_ACCOUNT && BAKONG_TOKEN);
+    case "TRUEMONEY":
+      return !!TRUEMONEY_PHONE;
+    case "WING":
+      return !!WING_PHONE;
+    case "BANK":
+      return !!BANK_ACCOUNT;
+    case "USDT":
+      return !!USDT_WALLET;
+    case "WALLET":
+    case "MANUAL":
+      return true;
+    default:
+      return false;
+  }
+}
+
+export async function initiatePayment(
+  args: InitiatePaymentArgs
+): Promise<PaymentInitResult> {
+  if (args.method === "BAKONG" && BAKONG_TOKEN) return initiateBakong(args);
+  
+  if (SIM_MODE) return simulatePayment(args);
+  if (args.method === "TRUEMONEY") return initiateTrueMoney(args);
+  if (args.method === "WING") return initiateWing(args);
+  if (args.method === "BANK") return initiateBankTransfer(args);
+  if (args.method === "USDT") return initiateUsdt(args);
+  throw new Error(`Unsupported payment method: ${args.method}`);
 }
 
 export interface PaymentInitResult {
@@ -163,68 +231,96 @@ export async function checkBakongPayment(md5Hash: string, expectedAmount?: numbe
 }
 
 async function initiateTrueMoney(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
-  const phone = process.env.TRUEMONEY_PHONE;
-  
-  if (!phone) {
-    throw new Error("TrueMoney not configured");
+  if (!TRUEMONEY_PHONE) {
+    throw new Error("TrueMoney not configured. Set TRUEMONEY_PHONE in environment variables.");
   }
 
   const ref = `TM-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  const amount = args.currency === "KHR" ? args.amountKhr : args.amountUsd;
+  const currency = args.currency === "KHR" ? "KHR" : "USD";
+
   return {
     paymentRef: ref,
-    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/simulate?order=${args.orderNumber}&ref=${ref}&method=TRUEMONEY`,
+    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${args.orderNumber}`,
     qrString: null,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-    instructions: `Transfer ${args.currency === "KHR" ? args.amountKhr : args.amountUsd} to TrueMoney ${phone}`,
+    instructions: `Transfer ${amount} ${currency} to TrueMoney: ${TRUEMONEY_PHONE}.\nReference: ${ref}\nOrder: ${args.orderNumber}`,
   };
 }
 
 async function initiateWing(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
-  const wingMsisdn = process.env.WING_MSISDN;
-  
-  if (!wingMsisdn) {
-    throw new Error("Wing not configured");
+  if (!WING_PHONE) {
+    throw new Error("Wing not configured. Set WING_PHONE in environment variables.");
   }
 
   const ref = `WING-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  const amount = args.currency === "KHR" ? args.amountKhr : args.amountUsd;
+  const currency = args.currency === "KHR" ? "KHR" : "USD";
+
   return {
     paymentRef: ref,
-    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/simulate?order=${args.orderNumber}&ref=${ref}&method=WING`,
+    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${args.orderNumber}`,
     qrString: null,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+    instructions: `Transfer ${amount} ${currency} to Wing: ${WING_PHONE}.\nReference: ${ref}\nOrder: ${args.orderNumber}`,
   };
 }
 
 async function initiateBankTransfer(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
-  const bankName = process.env.BANK_NAME || "ABA Bank";
-  const bankAccount = process.env.BANK_ACCOUNT || "123456789";
-  const bankAccountName = process.env.BANK_ACCOUNT_NAME || "Ty Khai TopUp";
+  if (!BANK_ACCOUNT) {
+    throw new Error("Bank Transfer not configured. Set BANK_ACCOUNT in environment variables.");
+  }
 
   const ref = `BANK-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  const amount = args.currency === "KHR" ? args.amountKhr : args.amountUsd;
+  const currency = args.currency === "KHR" ? "KHR" : "USD";
+
+  const instructions = [
+    `Bank: ${BANK_NAME}`,
+    `Account: ${BANK_ACCOUNT}`,
+    `Name: ${BANK_ACCOUNT_NAME}`,
+    BANK_BRANCH ? `Branch: ${BANK_BRANCH}` : null,
+    `Amount: ${amount} ${currency}`,
+    `Reference: ${ref}`,
+    `Order: ${args.orderNumber}`,
+    "",
+    "⚠️ IMPORTANT: Include the reference number when transferring!",
+  ].filter(Boolean).join("\n");
+
   return {
     paymentRef: ref,
-    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/simulate?order=${args.orderNumber}&ref=${ref}&method=BANK`,
+    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${args.orderNumber}`,
     qrString: null,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    instructions: `Transfer to ${bankName} Account: ${bankAccount} (${bankAccountName}). Reference: ${ref}`,
+    instructions,
   };
 }
 
 async function initiateUsdt(args: InitiatePaymentArgs): Promise<PaymentInitResult> {
-  const usdtWallet = process.env.USDT_WALLET;
-  
-  if (!usdtWallet) {
-    throw new Error("USDT payment not configured");
+  if (!USDT_WALLET) {
+    throw new Error("USDT payment not configured. Set USDT_WALLET in environment variables.");
   }
 
   const ref = `USDT-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
   const amountUsd = args.amountUsd;
   
+  const instructions = [
+    `Send exactly ${amountUsd} USDT (TRC20)`,
+    `To wallet: ${USDT_WALLET}`,
+    `Reference: ${ref}`,
+    `Order: ${args.orderNumber}`,
+    "",
+    "⚠️ IMPORTANT:",
+    "- Send only USDT on TRC20 network",
+    "- Include reference in transaction memo if possible",
+    "- Payment will be verified within 30 minutes",
+  ].join("\n");
+
   return {
     paymentRef: ref,
-    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/simulate?order=${args.orderNumber}&ref=${ref}&method=USDT`,
+    redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${args.orderNumber}`,
     qrString: null,
     expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    instructions: `Send exactly ${amountUsd} USDT (TRC20) to ${usdtWallet}. Reference: ${ref}`,
+    instructions,
   };
 }
